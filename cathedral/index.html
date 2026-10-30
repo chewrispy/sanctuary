@@ -140,6 +140,14 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .stamp{width:110px;height:110px;margin:6px auto 4px;border:3px solid #c8463c;border-radius:50%;color:#c8463c;display:grid;place-items:center;transform:rotate(-12deg);font-family:'Gowun Batang',serif;font-weight:700;text-align:center;line-height:1.25;font-size:17px;animation:stampin .5s cubic-bezier(.2,1.6,.4,1)}
 @keyframes stampin{from{transform:rotate(-12deg) scale(2);opacity:0}}
 .offer{display:flex;flex-direction:column;gap:8px}
+#lookSheet{padding:16px 16px 14px}#lookSheet h3{font-size:17px}#lookSheet .lr{margin-top:9px;display:flex;align-items:center;gap:10px}#lookSheet .ll{font-size:12.5px;color:var(--sub);width:52px;flex:0 0 auto}
+#lookSheet .ch{display:flex;gap:7px;flex-wrap:wrap}
+#lookSheet .ch{gap:6px}#lookSheet .sw{width:30px;height:30px;border-radius:50%;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+#lookSheet .sw.sel{border-color:var(--gold)}
+#lookSheet .tx{height:30px;padding:0 10px;border-radius:15px;border:1px solid var(--line);font-size:13px}
+#lookSheet .tx.sel{border-color:rgba(236,217,168,.7);color:var(--gold);background:rgba(236,217,168,.08)}
+#gate .look{margin-top:12px;font-size:14px;color:var(--sub);padding:8px 14px;text-decoration:underline;text-underline-offset:4px;opacity:0;transition:opacity .6s;pointer-events:none}
+#gate .look.ready{opacity:1;pointer-events:auto}
 #fade.show{opacity:1}
 </style>
 </head>
@@ -219,7 +227,8 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 <div class="sheet" id="setSheet">
   <button class="x" data-close>✕</button>
   <h3>설정</h3>
-  <div class="lbl" style="margin-top:6px">내 이름</div>
+  <button class="sbtn" id="bLookSet" style="width:100%;margin-top:4px">외모 꾸미기</button>
+  <div class="lbl">내 이름</div>
   <div class="field"><input id="nameIn" maxlength="10" autocomplete="off"><button class="sbtn" id="nameRnd">다시 짓기</button><button class="sbtn primary" id="nameOk">저장</button></div>
   <div class="lbl">다른 사람의 인사 알림</div>
   <div class="seg" data-key="notify"><button data-v="1">보기</button><button data-v="0">숨기기</button></div>
@@ -279,6 +288,13 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
   </div>
 </div>
 
+<div class="sheet" id="lookSheet">
+  <button class="x" data-close>✕</button>
+  <h3>나 꾸미기</h3>
+  <div id="lookBody"></div>
+  <button class="sbtn primary" id="lookOk" style="width:100%;margin-top:14px">이대로 할게요</button>
+</div>
+
 <div class="sheet" id="quiz"><button class="x" data-close>✕</button><div id="quizBody"></div></div>
 
 <div id="conf"><div class="box" id="confBody"></div></div>
@@ -295,6 +311,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
   <div class="sub">말없이 함께 머무는 온라인 성당</div>
   <div class="st" id="gateSt">성당 문을 여는 중</div>
   <button class="go" id="bEnter">들어가기</button>
+  <button class="look" id="bLookEnter">나를 꾸미고 들어가기</button>
   <div class="foot">바닥을 누르면 걷고, 긴 의자를 누르면 앉아요.<br>드래그로 둘러볼 수 있어요.</div>
 </div>
 
@@ -497,13 +514,23 @@ const shadowMat=new THREE.MeshBasicMaterial({map:shadowTex,transparent:true,dept
 const robeMat=new THREE.MeshLambertMaterial({color:0xece6d8});
 const robeMat2=new THREE.MeshLambertMaterial({color:0xd9dde2});
 const shoeMat=new THREE.MeshLambertMaterial({color:0xe8dfcf});
-const veilMat=new THREE.MeshLambertMaterial({color:0xfbf8f2,transparent:true,opacity:.9});
-const SKIN=[0xd9a578,0xcf9867,0xc28657,0xe0b48a,0xb5784c];const skinMats=SKIN.map(c=>new THREE.MeshLambertMaterial({color:c}));
+const laceTex=tex(128,128,(g,w,h)=>{g.fillStyle='rgba(255,255,255,.9)';g.fillRect(0,0,w,h);g.globalCompositeOperation='destination-out';
+  for(let y=0;y<h;y+=16)for(let x=(y/16)%2?8:0;x<w;x+=16){g.beginPath();g.arc(x+4,y+4,3.2,0,7);g.fill()}
+  g.fillStyle='rgba(0,0,0,.35)';for(let y=8;y<h;y+=16)for(let x=0;x<w;x+=16){g.beginPath();g.arc(x+4,y+4,1.6,0,7);g.fill()}},{rep:[4,2]});
+const VEILC=[null,0xfbf6ea,0x2a2626];const veilMats=VEILC.map(c=>c==null?null:new THREE.MeshLambertMaterial({color:c,map:laceTex,transparent:true,side:THREE.DoubleSide,alphaTest:.15}));
+const HAIRC=[0x231c18,0x3d2a1e,0x6b4428,0xc9a462,0x9a9590];const hairMats=HAIRC.map(c=>new THREE.MeshLambertMaterial({color:c,side:THREE.DoubleSide}));
+const HG={cap:new THREE.SphereGeometry(.448,28,16,0,Math.PI*2,0,Math.PI*.5),bob:new THREE.CylinderGeometry(.452,.47,.32,28,1,true,.95,Math.PI*2-1.9),
+  long:new THREE.CylinderGeometry(.452,.53,.72,28,1,true,1.0,Math.PI*2-2.0),bun:new THREE.SphereGeometry(.16,14,10),
+  vcap:new THREE.SphereGeometry(.472,28,16,0,Math.PI*2,0,Math.PI*.56),vdrape:new THREE.CylinderGeometry(.47,.58,.56,28,1,true,Math.PI-1.4,2.8)};
+const HAIRS=['short','bob','long','bun','none'],HAIRN={short:'짧은 머리',bob:'단발',long:'긴 머리',bun:'올림머리',none:'민머리'};
+const rint=n=>Math.floor(Math.random()*n);
+function randLook(){const v=Math.random()<.33;return {skin:rint(5),hair:v?pick(['bob','long','bun','bun','long']):pick(['short','short','short','bob','long','bun','none']),hairC:pick([0,0,0,1,1,2,2,3,4]),veil:v?(Math.random()<.8?1:2):0,stole:rint(6)}}
+const SKIN=[0xd9a578,0xcf9867,0xc28657,0xe0b48a,0xb5784c];const skinMats=SKIN.map(c=>new THREE.MeshLambertMaterial({color:c,emissive:new THREE.Color(c).multiplyScalar(.22)}));
 const STOLE=[0x9bb6d8,0xdba3ad,0xa3c79f,0xe6cc80,0xb9a5d8,0xe9d7a8];const stoleMats=STOLE.map(c=>new THREE.MeshLambertMaterial({color:c,side:THREE.DoubleSide}));
 const pickables=[];
 
 class Avatar{
-  constructor({name,isMe=false,stole,scale=1,veil=false,robeC,stoleC,cape}){
+  constructor({name,isMe=false,stole,scale=1,veil=false,robeC,stoleC,cape,look}){
     this.name=name;this.isMe=isMe;this.root=new THREE.Group();this.pos=this.root.position;this.rotY=Math.PI;this.tRotY=Math.PI;
     this.path=[];this.speed=isMe?1.9:rand(1.0,1.35);this.mode='stand';this.fold=false;this.crossT=-1;this.reachT=-1;this.bowT=-1;this.beatT=-1;this.walkPh=0;this.moving=false;
     this.sing=false;this.elev=false;this.ph=Math.random()*9;
@@ -518,7 +545,8 @@ class Avatar{
     this.arms=[1,-1].map(s=>{const g=new THREE.Group();g.position.set(s*.25,.56,.04);const a=new THREE.Mesh(AG.arm,robe);a.position.y=-.16;const h=new THREE.Mesh(AG.hand,skin);h.position.y=-.33;g.add(a,h);this.torso.add(g);return g});
     this.headP=new THREE.Group();this.headP.position.y=.62;this.torso.add(this.headP);
     const head=new THREE.Mesh(AG.head,skin);head.position.y=.4;const face=new THREE.Mesh(AG.face,faceMat);face.position.y=.4;this.headP.add(head,face);
-    if(veil){const v=new THREE.Mesh(AG.veil,veilMat);v.position.y=.42;v.rotation.x=-.35;this.headP.add(v)}
+    this.skinParts=[head,...this.arms.map(g=>g.children[1])];this.panels=stoleC!=null?[]:[pf,pb];
+    const L=look||randLook();if(veil&&!look){L.veil=1;if(L.hair==='short'||L.hair==='none')L.hair='bob'}if(stole!=null&&!look)L.stole=stole;this.applyLook(L);
     if(cape!=null){const cm=new THREE.MeshLambertMaterial({color:cape,side:THREE.DoubleSide});const c=new THREE.Mesh(new THREE.CylinderGeometry(.27,.47,.58,22,1,true),cm);c.position.y=.33;this.torso.add(c);
       [[0,.3],[Math.PI,.3]].forEach(([ry])=>{const s1=new THREE.Mesh(new THREE.CylinderGeometry(.275,.475,.585,8,1,true,ry-.16,.32),M.gold);s1.position.y=.33;this.torso.add(s1)});
       this.host=new THREE.Mesh(new THREE.CylinderGeometry(.11,.11,.015,20),new THREE.MeshBasicMaterial({color:0xfffbea}));this.host.rotation.x=Math.PI/2;this.host.position.set(0,1.66,.22);this.host.visible=false;this.torso.add(this.host);const hg=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:.8}));hg.scale.set(.9,.9,1);hg.position.set(0,1.66,.2);hg.visible=false;this.torso.add(hg);this.hostGlow=hg}
@@ -526,6 +554,11 @@ class Avatar{
     this.root.scale.setScalar(scale);this.scale=scale;
     world.add(this.root);
   }
+  applyLook(L){this.look={...L};this.skinParts.forEach(m=>m.material=skinMats[L.skin%skinMats.length]);if(L.stole!=null)this.panels.forEach(m=>m.material=stoleMats[L.stole%stoleMats.length]);
+    if(this.lookG)this.headP.remove(this.lookG);const g=new THREE.Group();g.position.y=.4;this.lookG=g;this.headP.add(g);const hm=hairMats[L.hairC%hairMats.length];
+    const add=(geo,mat,y=0,rx=0,z=0)=>{const m=new THREE.Mesh(geo,mat);m.position.set(0,y,z);m.rotation.x=rx;g.add(m);return m};
+    if(L.hair!=='none'){add(HG.cap,hm,.01,-.4);if(L.hair==='bob')add(HG.bob,hm,-.1);if(L.hair==='long')add(HG.long,hm,-.3);if(L.hair==='bun')add(HG.bun,hm,.27,0,-.33)}
+    if(L.veil){const vm=veilMats[L.veil];add(HG.vcap,vm,.01,-.56);add(HG.vdrape,vm,-.26)}}
   remove(){world.remove(this.root);if(this.seat)this.seat.occ=null;for(let i=pickables.length-1;i>=0;i--)if(pickables[i].userData.avatar===this)pickables.splice(i,1)}
   goTo(pts,cb){this.slide=null;this.path=pts.map(p=>new THREE.Vector3(p.x,0,p.z));this.onArrive=cb||null}
   standUp(){if(this.seat){const s=this.seat;this.seat.occ=null;this.seat=null;this.mode='stand';this.pos.z=s.lane;}else if(this.mode!=='stand')this.mode='stand';}
@@ -616,7 +649,8 @@ function aiTick(a,dt){const ai=a.ai;ai.leaveAt-=dt;
 
 /* ---------- me ---------- */
 let myAction=null;
-function makeMe(){me=new Avatar({name:myName,isMe:true,stole:0});me.pos.set(0,0,12.4);me.rotY=me.tRotY=Math.PI;$('#meName').textContent=myName;
+let myLook=store.get('look',{skin:0,hair:'short',hairC:0,veil:0,stole:0});
+function makeMe(){me=new Avatar({name:myName,isMe:true,look:myLook});me.pos.set(0,0,12.4);me.rotY=me.tRotY=Math.PI;$('#meName').textContent=myName;
   me.goTo([{x:0,z:9.6}])}
 function moveMeTo(p,cb){setPray(false);const wasSeat=me.seat;me.standUp();if(wasSeat)me.pos.z=wasSeat.lane;me.goTo(plan(me.pos,p),cb)}
 function setPray(on){if(!me)return;if(on){if(me.path.length){me.path=[];me.onArrive=null}
@@ -705,10 +739,10 @@ function nearestOnScreen(ps,x,y,r,ok){let bi=-1,bd=r;ps.forEach((p,i)=>{if(ok&&!
 function marker(p){mk.position.set(p.x,.02,p.z);mk.material.opacity=.8;mk.scale.setScalar(.6)}
 
 /* ---------- UI wiring ---------- */
-const sheets=['#roomSheet','#setSheet','#rosary','#shot','#moreSheet','#offerSheet','#quiz'];
+const sheets=['#roomSheet','#setSheet','#rosary','#shot','#moreSheet','#offerSheet','#quiz','#lookSheet'];
 function openSheet(id){sheets.forEach(s=>$(s).classList.toggle('show',s===id));$('#scrim').classList.toggle('show',id!=='#rosary');$('#aRosary').classList.toggle('on',id==='#rosary');$('#aMore').classList.toggle('on',id==='#moreSheet');
   if(id==='#rosary'||id==='#moreSheet')$('#panel').classList.remove('show');if(me)me.fold=id==='#rosary'||me.mode==='kneel'}
-function closeSheets(){sheets.forEach(s=>$(s).classList.remove('show'));$('#scrim').classList.remove('show');$('#aRosary').classList.remove('on');$('#aMore').classList.remove('on');if(me)me.fold=false;if(panelOpen)$('#panel').classList.add('show')}
+function closeSheets(){if($('#lookSheet').classList.contains('show')&&cam.focus&&cam.focus.look){cam.focus=null;if(me)me.tRotY=me.rotY+Math.PI}sheets.forEach(s=>$(s).classList.remove('show'));$('#scrim').classList.remove('show');$('#aRosary').classList.remove('on');$('#aMore').classList.remove('on');if(me)me.fold=false;if(panelOpen)$('#panel').classList.add('show')}
 let panelOpen=false;
 $('#scrim').onclick=closeSheets;document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeSheets);
 $('#aCross').onclick=()=>me&&myCross();
@@ -787,7 +821,7 @@ function showHost(av){const m=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,
   m.position.set(av.pos.x+f.x*.42,1.0+av.bp.position.y,av.pos.z+f.z*.42);m.rotation.x=Math.PI/2;world.add(m);hostFx={mesh:m,t:0,y:m.position.y}}
 
 /* priest */
-const priest=new Avatar({name:'신부님',robeC:0xf4f0e6,stoleC:0xf4f0e6,cape:0x4f7f45});priest.speed=1.1;priest.root.visible=false;priest.pos.set(0,-50,-18.6);
+const priest=new Avatar({name:'신부님',robeC:0xf4f0e6,stoleC:0xf4f0e6,cape:0x4f7f45,look:{skin:1,hair:'short',hairC:4,veil:0}});priest.speed=1.1;priest.root.visible=false;priest.pos.set(0,-50,-18.6);
 function priestIn(){priest.root.visible=true;priest.path=[];priest.pos.set(0,.7,-18.6);priest.rotY=priest.tRotY=0;priest.elev=false;priest.mode='stand'}
 function priestTo(pts,cb){priest.goTo(pts,()=>{priest.tRotY=0;cb&&cb()})}
 
@@ -887,6 +921,18 @@ const Quiz={qs:[],i:0,score:0,
       $('#qexp').innerHTML=`${ok?'맞았어요. ':'아쉬워요. '}${q.e}<div style="margin-top:12px"><button class="sbtn primary" style="width:100%" id="qNext">${this.i===this.qs.length-1?'결과 보기':'다음 문제'}</button></div>`;Snd.tick();
       $('#qNext').onclick=()=>{B.dataset.lock='0';this.i++;this.r()}});B.dataset.lock='0'}};
 
+/* ---------- look ---------- */
+function renderLook(){const L=myLook,hx=c=>'#'+c.toString(16).padStart(6,'0');
+  const row=(lbl,key,items)=>`<div class="lr"><div class="ll">${lbl}</div><div class="ch">${items.map(([v,html,cls,bg])=>`<button class="${cls}${L[key]===v?' sel':''}"${bg!=null?` style="background:${hx(bg)}"`:''} data-k="${key}" data-v="${v}">${html}</button>`).join('')}</div></div>`;
+  $('#lookBody').innerHTML=row('피부','skin',SKIN.map((c,i)=>[i,'','sw',c]))+row('머리 모양','hair',HAIRS.map(h=>[h,HAIRN[h],'tx']))+row('머리색','hairC',HAIRC.map((c,i)=>[i,'','sw',c]))
+    +row('미사포','veil',[[0,'안 쓰기','tx'],[1,'흰색','tx'],[2,'검정','tx']])+row('옷 색','stole',STOLE.map((c,i)=>[i,'','sw',c]));
+  $('#lookBody').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{const k=b.dataset.k,v=b.dataset.v;myLook={...myLook,[k]:k==='hair'?v:+v};me.applyLook(myLook);store.set('look',myLook);renderLook()})}
+function openLook(){if(!me)return;stopModes();renderLook();openSheet('#lookSheet');me.path=[];me.onArrive=null;me.tRotY=cam.yaw;
+  cam.focus={pos:new THREE.Vector3(me.pos.x,.6+me.bp.position.y,me.pos.z),dist:3.0,yaw:cam.yaw,pitch:.22,look:true}}
+$('#lookOk').onclick=()=>{closeSheets();toast('새 모습으로 머물러요')};
+$('#bLookSet').onclick=()=>openLook();
+$('#bLookEnter').onclick=()=>{$('#bEnter').click();setTimeout(openLook,700)};
+
 /* ---------- more menu ---------- */
 $('#aMore').onclick=()=>{if($('#moreSheet').classList.contains('show'))closeSheets();else openSheet('#moreSheet')};
 document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{closeSheets();({mass:()=>Mass.start(),server:()=>Server.start(),choir:()=>Choir.start(),confess:()=>Confess.go(),quiz:()=>Quiz.start(),
@@ -898,7 +944,7 @@ let entered=false;
 applyRoom(room);populate();makeMe();
 cam.target.set(me.pos.x,1.3,me.pos.z);
 $('#gateSt').textContent='성당 문을 여는 중';
-setTimeout(()=>{$('#gateSt').textContent='문이 열렸어요';$('#bEnter').classList.add('ready')},900);
+setTimeout(()=>{$('#gateSt').textContent='문이 열렸어요';$('#bEnter').classList.add('ready');$('#bLookEnter').classList.add('ready')},900);
 $('#bEnter').onclick=()=>{entered=true;$('#gate').classList.add('hide');$('#hud').classList.remove('hide');Snd.init();
   if(!store.get('seen',false)){store.set('seen',true);setTimeout(()=>toast('바닥을 누르면 걷고, 긴 의자를 누르면 앉아요'),900)}else setTimeout(()=>toast(`${room.name}에 들어왔어요`),700);
   setTimeout(()=>{const o=others.find(o=>!o.path.length&&o.pos.z>0)||others[0];if(o){o.bowT=0;toast(`${o.name}님이 고개 숙여 인사했어요`,{other:true})}},4800)};
@@ -921,7 +967,7 @@ function loop(){const dt=Math.min(clock.getDelta(),.05);t+=dt;
   // camera
   if(priest.root.visible)priest.pos.y=lerp(priest.pos.y,priest.pos.z<-16.4?.7:.35,1-Math.exp(-dt*8));
   if(me){const F=cam.focus;const tg=F?tmp.copy(F.pos):tmp.set(me.pos.x,1.25+me.bp.position.y*.6,me.pos.z);cam.target.lerp(tg,1-Math.exp(-dt*4));
-    const Y=F?F.yaw:cam.yaw,P=F?F.pitch:cam.pitch,D=F?F.dist:cam.dist;if(F){cam.yaw=lerp(cam.yaw,Y,.05)}
+    const Y=F?F.yaw:cam.yaw,P=F?F.pitch:cam.pitch,D=F?F.dist:cam.dist;if(F){let dY=Y-cam.yaw;dY=Math.atan2(Math.sin(dY),Math.cos(dY));cam.yaw+=dY*.06}
     const cp=Math.cos(P),off=new THREE.Vector3(Math.sin(cam.yaw)*cp,Math.sin(P),Math.cos(cam.yaw)*cp).multiplyScalar(D);
     const pos=cam.target.clone().add(off);pos.x=clamp(pos.x,-6.2,6.2);pos.z=clamp(pos.z,-19.6,13.8);pos.y=clamp(pos.y,.6,9);camera.position.lerp(pos,1-Math.exp(-dt*8));camera.lookAt(cam.target.x,cam.target.y+.2,cam.target.z)}
   renderer.render(scene,camera);
