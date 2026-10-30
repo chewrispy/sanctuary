@@ -260,7 +260,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
     <button class="card" data-m="confess"><b><i>⌗</i>고해성사</b><small>고해소에서 마음의 짐을 내려놓아요</small></button>
     <button class="card" data-m="quiz"><b><i>✎</i>찰고</b><small>그 시절 교리 문답, 통과할 수 있을까요?</small></button>
     <button class="card" data-m="votive"><b><i>🕯</i>초 봉헌</b><small>봉헌함에 1달러, 원하는 초를 골라 켜요</small></button>
-    <button class="card" data-m="mea"><b><i>✋</i>내 탓이오</b><small>가슴을 세 번 치며 잘못을 돌아봐요</small></button>
+    <button class="card" data-m="mea"><b><i>✋</i>다 함께 내 탓이오</b><small id="meaInfo">15분마다 모두가 함께 가슴을 쳐요</small></button>
     <button class="card" data-m="peace"><b><i>☮</i>평화의 인사</b><small>주변 사람들과 평화를 빌어요</small></button>
   </div>
 </div>
@@ -769,7 +769,16 @@ const crossAll=()=>others.forEach(o=>{if(!o.path.length)setTimeout(()=>o.doCross
 function congregation(p){others.forEach(o=>{if(!o.seat||o.path.length)return;const s=o.seat;o.mode=p;o.fold=p==='kneel';o.slide=new THREE.Vector3(s.x,0,p==='kneel'?s.z-.42:p==='stand'?s.z-.3:s.z)})}
 function mePose(p){if(!me||me.path.length)return;const s=me.seat;if(s){me.mode=p;me.slide=new THREE.Vector3(s.x,0,p==='kneel'?s.z-.42:p==='stand'?s.z-.3:s.z)}else me.mode=p==='sit'?'stand':p;
   $('#aPray').classList.toggle('on',me.mode==='kneel');$('#aPrayL').textContent=me.mode==='kneel'?'멈추기':'기도하기'}
-function meaCulpa(){if(!me)return;me.beatT=0;[0,1,2].forEach(i=>setTimeout(()=>Snd.tick(),450+i*550));setTimeout(()=>toast('내 탓이오, 내 탓이오, 저의 큰 탓이옵니다'),300)}
+const Mea={last:-1,warned:-1,
+  slot(d){return Math.floor((d.getHours()*60+d.getMinutes())/15)},
+  nextLabel(){const d=new Date(),m=(this.slot(d)+1)*15%1440;return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`},
+  everyone(){if(me)me.beatT=0;[...others,...Choir.m].forEach(o=>setTimeout(()=>{o.beatT=0},rand(0,220)));if(priest.root.visible)priest.beatT=0;[0,1,2].forEach(i=>setTimeout(()=>Snd.tick(),450+i*550))},
+  check(){const d=new Date(),sl=this.slot(d),m=d.getMinutes()%15,sec=d.getSeconds();const info=$('#meaInfo');if(info)info.textContent=`15분마다 모두 함께 · 다음 ${this.nextLabel()}`;
+    if(!entered||Mass.on)return;
+    if(m===14&&sec>=54&&this.warned!==sl){this.warned=sl;toast('곧 다 함께 내 탓이오')}
+    if(m===0&&sec<3&&this.last!==sl){this.last=sl;this.everyone();setTimeout(()=>toast('내 탓이오, 내 탓이오, 저의 큰 탓이옵니다'),300)}}};
+setInterval(()=>Mea.check(),1000);
+function meaCulpa(){toast(`다음 ‘다 함께 내 탓이오’는 ${Mea.nextLabel()}이에요`)}
 function peaceAct(){if(!me)return;me.bowT=0;const near=others.filter(o=>o.pos.distanceTo(me.pos)<5.5).sort((a,b)=>a.pos.distanceTo(me.pos)-b.pos.distanceTo(me.pos)).slice(0,3);
   if(!near.length){setTimeout(()=>toast('평화를 빌었어요. 멀리 있는 이들에게도 닿기를'),600);return}
   near.forEach((o,i)=>setTimeout(()=>{o.bowT=0;if(i===0)toast(`${o.name}님이 “평화를 빕니다” 하고 인사했어요`)},700+i*500))}
@@ -803,7 +812,7 @@ const Mass={on:false,i:0,role:'people',beats:0,elevAt:0,rang:false,
     let btns=s.btns;if(this.role==='server'&&s.k==='영성체')btns=[{t:'제대 곁에서 모시기',p:1,f(){me.fold=true;showHost(me);setTimeout(()=>{toast('제대 곁에서 성체를 모셨어요');me.fold=false;Mass.next(1200)},1600)}}];
     panel({k:`미사 · ${s.k}${this.role==='server'?' · 복사':''}`,line:s.line,note:s.note,prog:this.i/this.steps.length,btns:[...btns,{t:'나가기',f:()=>stopModes()}]});s.enter&&s.enter()},
   next(ms=800){const i=this.i;setTimeout(()=>{if(!this.on||this.i!==i)return;this.i++;if(this.i>=this.steps.length)this.end();else this.show()},ms)},
-  beat(){this.beats=(this.beats||0)+1;me.beatT=0;[0,1,2].forEach(i=>setTimeout(()=>Snd.tick(),450+i*550));others.forEach(o=>{if(o.seat&&Math.random()<.5)setTimeout(()=>o.beatT=0,rand(0,400))});
+  beat(){this.beats=(this.beats||0)+1;me.beatT=0;[0,1,2].forEach(i=>setTimeout(()=>Snd.tick(),450+i*550));[...others,...Choir.m].forEach(o=>{if(!o.path.length)setTimeout(()=>o.beatT=0,rand(0,220))});priest.beatT=0;
     setNote(`버튼을 누를 때마다 가슴을 쳐요 (${this.beats}/3)`);if(this.beats>=3){this.beats=0;toast('내 탓이오, 내 탓이오, 저의 큰 탓이옵니다');this.next(2600)}},
   elevation(){const server=this.role==='server';this.elevAt=0;this.rang=false;const i=this.i;
     if(server)panel({k:'미사 · 성찬 전례 · 복사',line:'사제가 성체를 높이 들어 올리는 순간에 종을 쳐요.',note:'신부님 손을 잘 보세요!',prog:this.i/this.steps.length,btns:[{t:'종 치기',p:1,cls:'bell',f(){Mass.ring()}}]});
