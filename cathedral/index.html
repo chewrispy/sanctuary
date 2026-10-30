@@ -964,7 +964,7 @@ cam.target.set(me.pos.x,1.3,me.pos.z);
 $('#gateSt').textContent='성당 문을 여는 중';
 setTimeout(()=>{$('#gateSt').textContent='문이 열렸어요';$('#bEnter').classList.add('ready');$('#bLookEnter').classList.add('ready')},900);
 $('#bEnter').onclick=()=>{entered=true;$('#gate').classList.add('hide');$('#hud').classList.remove('hide');Snd.init();
-  if(!store.get('seen',false)){store.set('seen',true);setTimeout(()=>toast('바닥을 누르면 걷고, 긴 의자를 누르면 앉아요'),900)}else setTimeout(()=>toast(`${room.name}에 들어왔어요`),700);
+  if(!store.get('seen',false)){store.set('seen',true);setTimeout(()=>toast(matchMedia('(pointer:fine)').matches?'방향키나 WASD로 걷고, 긴 의자를 클릭하면 앉아요':'바닥을 누르면 걷고, 긴 의자를 누르면 앉아요'),900)}else setTimeout(()=>toast(`${room.name}에 들어왔어요`),700);
   setTimeout(()=>{const o=others.find(o=>!o.path.length&&o.pos.z>0)||others[0];if(o){o.bowT=0;toast(`${o.name}님이 고개 숙여 인사했어요`,{other:true})}},4800)};
 
 /* ---------- loop ---------- */
