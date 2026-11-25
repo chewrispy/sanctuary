@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>교회 — 온라인 사원</title>
+<meta name="theme-color" content="#1d1b22">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../common/sanctuary.css?v=3">
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" class="hide">
+  <div id="top">
+    <div class="row">
+      <button class="iconbtn glass" id="bExit" aria-label="나가기">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H5v16h4"/><path d="M13 8l4 4-4 4"/><path d="M17 12H8"/></svg>
+      </button>
+      <button class="place glass" id="bRoom">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v5M10 3.8h4"/><path d="M7 21V11.5l5-4 5 4V21"/><path d="M3 21v-6h4M21 21v-6h-4"/><path d="M2 21h20"/><path d="M10.5 21v-4h3v4"/></svg>
+        <b>교회</b><span class="dv"></span><span class="rn" id="roomName">청년 예배 7</span>
+        <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+    </div>
+    <div class="rcol">
+      <div class="tools glass">
+        <button id="bCount" aria-label="함께 있는 사람">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="9" cy="8" r="3.4"/><path d="M3 20c.6-3.6 3-5.6 6-5.6s5.4 2 6 5.6"/><path d="M15.5 4.8a3.3 3.3 0 0 1 0 6.4M17.5 14.8c2 .7 3.2 2.5 3.5 5.2"/></svg>
+          <span class="cnt" id="count">0</span>
+        </button>
+        <button id="bMute" aria-label="소리">
+          <svg id="icoMute" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+          <svg id="icoSound" style="display:none" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9a4.5 4.5 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>
+        </button>
+        <button id="bSet" aria-label="설정">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2.2" fill="#2a2630"/><circle cx="15" cy="17" r="2.2" fill="#2a2630"/></svg>
+        </button>
+        <button id="bShot" aria-label="사진 찍기">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4 8h3.2L9 5.5h6L16.8 8H20v11H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg>
+        </button>
+      </div>
+      <button class="pill glass" id="bChant"><span class="eq"><i></i><i></i><i></i></span><span id="chantLbl">찬양 듣기</span></button>
+    </div>
+  </div>
+
+  <div id="toast" class="glass"></div>
+  <div class="chip" id="meChip"><span class="me">나</span><span id="meName"></span></div>
+  <div class="chip other hide" id="otherChip"></div>
+  <button class="pill glass hide" id="spotChip">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.7" stroke-linecap="round"><path d="M12 3c2 2.6 3 4.4 3 6a3 3 0 0 1-6 0c0-1.6 1-3.4 3-6z"/><path d="M8 14h8v7H8z"/></svg>
+    <span id="spotLbl">초 봉헌하기</span>
+  </button>
+
+  <div id="dock" class="glass">
+    <button class="act" id="aAmen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v10H9l-4 4v-4H4z"/><path d="M9 10h6M12 7.5v5"/></svg>
+      <span id="aAmenL">아멘</span>
+    </button>
+    <button class="act" id="aHands">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21v-6l-3-5 1.5-1 3 3.5V4.5a1.2 1.2 0 0 1 2.4 0V11"/><path d="M17 21v-6l3-5-1.5-1-3 3.5V4.5a1.2 1.2 0 0 0-2.4 0V11"/></svg>
+      <span id="aHandsL">손 들기</span>
+    </button>
+    <button class="act" id="aPray">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5c-1 1.3-2.2 4.2-2.6 7.2l-2.9 4.6a1.6 1.6 0 0 0 .6 2.2l1.8 1M12 3.5c1 1.3 2.2 4.2 2.6 7.2l2.9 4.6a1.6 1.6 0 0 1-.6 2.2l-1.8 1"/><path d="M12 3.5V16"/></svg>
+      <span id="aPrayL">기도하기</span>
+    </button>
+    <button class="act" id="aMore">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="2"/></svg>
+      <span>더보기</span>
+    </button>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+
+<div class="sheet" id="roomSheet">
+  <button class="x" data-close>✕</button>
+  <h3>예배 고르기</h3>
+  <div class="desc">교회마다, 예배마다 분위기가 달라요. 나에게 맞는 곳을 찾아보세요.</div>
+  <div id="roomList"></div>
+</div>
+
+<div class="sheet" id="setSheet">
+  <button class="x" data-close>✕</button>
+  <h3>설정</h3>
+  <button class="sbtn" id="bLookSet" style="width:100%;margin-top:4px">외모 꾸미기</button>
+  <div class="lbl">내 이름</div>
+  <div class="field"><input id="nameIn" maxlength="10" autocomplete="off"><button class="sbtn" id="nameRnd">다시 짓기</button><button class="sbtn primary" id="nameOk">저장</button></div>
+  <div class="lbl">다른 사람의 인사 알림</div>
+  <div class="seg" data-key="notify"><button data-v="1">보기</button><button data-v="0">숨기기</button></div>
+  <div class="lbl">그래픽</div>
+  <div class="seg" data-key="q"><button data-v="high">선명하게</button><button data-v="low">가볍게</button></div>
+</div>
+
+
+
+<div class="sheet" id="shot">
+  <button class="x" data-close>✕</button>
+  <h3>오늘의 교회</h3>
+  <div class="desc" style="margin-bottom:4px">이미지를 길게 누르면 저장할 수 있어요.</div>
+  <img id="shotImg" alt="교회 예배당 풍경">
+</div>
+
+<div class="sheet" id="moreSheet">
+  <button class="x" data-close>✕</button>
+  <h3>교회에서 할 수 있는 일</h3>
+  <div class="desc">마음 가는 것부터 천천히 해 보세요.</div>
+  <div class="grid">
+    <button class="card" data-m="worship"><b><i>✝</i>예배 드리기</b><small>찬양부터 축도까지, 응답하며 함께해요</small></button>
+    <button class="card" data-m="communion"><b><i>🍇</i>성찬식</b><small>빵과 미니잔 포도주스를 다 같이 나눠요</small></button>
+    <button class="card" data-m="offering"><b><i>₩</i>헌금하기</b><small>입구 헌금함 또는 헌금 ATM으로</small></button>
+    <button class="card" data-m="bulletin"><b><i>📄</i>주보 받기</b><small>안내위원께 이번 주 주보를 받아요</small></button>
+    <button class="card" data-m="newcomer"><b><i>🌱</i>새가족 등록</b><small>환영 데스크에서 등록하고 선물 받기</small></button>
+    <button class="card" data-m="tongsung"><b><i>🔥</i>통성기도</b><small>“주여!” 세 번, 다 함께 소리 내어 기도해요</small></button>
+    <button class="card" data-m="quiz"><b><i>✎</i>성경 퀴즈</b><small>주일학교 실력, 아직 남아 있나요?</small></button>
+    <button class="card" data-m="greet"><b><i>♡</i>축복 인사</b><small>옆 사람과 “축복합니다” 인사해요</small></button>
+  </div>
+</div>
+
+<div class="sheet" id="panel"><div id="panelBody"></div></div>
+
+
+
+<div class="sheet" id="offerSheet">
+  <button class="x" data-close>✕</button>
+  <div id="offerBody"></div>
+</div>
+
+<div class="sheet" id="bulletin">
+  <button class="x" data-close>✕</button>
+  <div id="bulletinBody"></div>
+</div>
+
+<div class="sheet" id="lookSheet">
+  <button class="x" data-close>✕</button>
+  <h3>나 꾸미기</h3>
+  <div id="lookBody"></div>
+  <button class="sbtn primary" id="lookOk" style="width:100%;margin-top:14px">이대로 할게요</button>
+</div>
+
+<div class="sheet" id="quiz"><button class="x" data-close>✕</button><div id="quizBody"></div></div>
+
+
+
+<div id="flash"></div>
+<div id="fade"></div>
+
+<div id="gate">
+  <a class="back" href="../">‹ 사원 고르기</a>
+  <svg class="mark" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M32 4v12M27 9h10"/><path d="M20 58V30l12-10 12 10v28"/><path d="M8 58V40h12M56 58V40H44"/><path d="M4 58h56"/><path d="M28 58V47h8v11"/><path d="M28 34h8"/>
+  </svg>
+  <h1>교회</h1>
+  <div class="sub">나에게 맞는 교회를 찾아가는 온라인 예배당</div>
+  <div class="st" id="gateSt">예배당 문을 여는 중</div>
+  <button class="go" id="bEnter">들어가기</button>
+  <button class="look" id="bLookEnter">나를 꾸미고 들어가기</button>
+  <div class="foot" id="gateFoot">바닥을 누르면 걷고, 긴 의자를 누르면 앉아요.<br>드래그로 둘러볼 수 있어요.</div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+window.THREE=THREE;
+const V='3';
+for(const s of ['../common/core.js','church.js'])await new Promise((ok,no)=>{const e=document.createElement('script');e.src=s+'?v='+V;e.onload=ok;e.onerror=no;document.body.appendChild(e)});
+</script>
+</body>
+</html>

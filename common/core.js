@@ -84,8 +84,8 @@ class Avatar{
   constructor({name,isMe=false,stole,scale=1,veil=false,robeC,stoleC,cape,look}){
     this.name=name;this.isMe=isMe;this.root=new THREE.Group();this.pos=this.root.position;this.rotY=Math.PI;this.tRotY=Math.PI;
     this.path=[];this.speed=isMe?1.9:rand(1.0,1.35);this.mode='stand';this.fold=false;this.crossT=-1;this.reachT=-1;this.bowT=-1;this.beatT=-1;this.walkPh=0;this.moving=false;
-    this.sing=false;this.elev=false;this.ph=Math.random()*9;
-    this.w={sit:0,kneel:0,fold:0,walk:0,sing:0,elev:0};this.slide=null;this.seat=null;this.onArrive=null;
+    this.sing=false;this.elev=false;this.pray=false;this.dance=false;this.clapT=-1;this.ph=Math.random()*9;
+    this.w={sit:0,kneel:0,fold:0,walk:0,sing:0,elev:0,pray:0,dance:0};this.slide=null;this.seat=null;this.onArrive=null;
     const skin=pick(skinMats),stm=stoleC!=null?new THREE.MeshLambertMaterial({color:stoleC,side:THREE.DoubleSide}):stole!=null?stoleMats[stole]:pick(stoleMats),robe=robeC!=null?new THREE.MeshLambertMaterial({color:robeC}):Math.random()<.75?robeMat:robeMat2;
     const sh=new THREE.Mesh(AG.shadow,shadowMat);sh.rotation.x=-Math.PI/2;sh.scale.set(1.1,1.1,1);sh.position.y=.01;this.root.add(sh);this.shadow=sh;
     this.bp=new THREE.Group();this.root.add(this.bp);
@@ -129,10 +129,10 @@ class Avatar{
     // pose weights
     const k=1-Math.exp(-dt*6),w=this.w;
     w.sit+=((this.mode==='sit'?1:0)-w.sit)*k;w.kneel+=((this.mode==='kneel'?1:0)-w.kneel)*k;
-    w.fold+=((this.fold||this.mode==='kneel'?1:0)-w.fold)*k;w.walk+=((this.moving?1:0)-w.walk)*(1-Math.exp(-dt*10));
+    w.fold+=((this.fold||this.pray||this.mode==='kneel'?1:0)-w.fold)*k;w.pray+=((this.pray?1:0)-w.pray)*k;w.dance+=((this.dance?1:0)-w.dance)*(1-Math.exp(-dt*4));w.walk+=((this.moving?1:0)-w.walk)*(1-Math.exp(-dt*10));
     if(this.moving)this.walkPh+=dt*this.speed*6.2;
     const sw=Math.sin(this.walkPh)*w.walk;
-    this.bp.position.y=-.2*w.kneel+.17*w.sit+Math.abs(Math.sin(this.walkPh))*.035*w.walk;
+    const T=performance.now()/1000,dz=Math.sin(T*4.2+this.ph);this.bp.position.y=-.2*w.kneel+.17*w.sit+Math.abs(Math.sin(this.walkPh))*.035*w.walk+Math.abs(dz)*.09*w.dance;
     this.legs[0].rotation.x=sw*.5+w.kneel*1.3-w.sit*1.45;this.legs[1].rotation.x=-sw*.5+w.kneel*1.3-w.sit*1.45;
     const [aL,aR]=this.arms;
     let lx=-sw*.35,lz=.4,rx=sw*.35,rz=-.4;
@@ -147,14 +147,36 @@ class Avatar{
       rx=lerp(rx,-1.35,inn);rz=lerp(rz,.75,inn);this.arms[1].position.z=.04+inn*(.06-ph*.08);bow=Math.max(bow,.12*inn);if(T>2.2){this.beatT=-1;this.arms[1].position.z=.04}}
     w.sing+=((this.sing?1:0)-w.sing)*k;w.elev+=((this.elev?1:0)-w.elev)*(1-Math.exp(-dt*3));
     if(w.elev>.01||this.host){lx=lerp(lx,-2.75,w.elev);lz=lerp(lz,-.3,w.elev);rx=lerp(rx,-2.75,w.elev);rz=lerp(rz,.3,w.elev);if(this.host){this.host.visible=this.hostGlow.visible=w.elev>.6}}
+    if(w.dance>.01){lx=lerp(lx,-2.5+dz*.25,w.dance);lz=lerp(lz,.35+dz*.25,w.dance);rx=lerp(rx,-2.5-dz*.25,w.dance);rz=lerp(rz,-.35+dz*.25,w.dance)}
+    if(this.clapT>=0){this.clapT+=dt;const C=this.clapT,inn=Math.min(1,C/.25,Math.max(0,(2.6-C)/.25)),c=Math.abs(Math.sin(C*9));
+      lx=lerp(lx,-1.3,inn);lz=lerp(lz,-.12-.4*(1-c),inn);rx=lerp(rx,-1.3,inn);rz=lerp(rz,.12+.4*(1-c),inn);if(C>2.6)this.clapT=-1}
     aL.rotation.set(lx,0,lz);aR.rotation.set(rx,0,rz);
     const sg=Math.sin(performance.now()/1000*1.7+this.ph)*w.sing;
-    this.torso.rotation.x=bow*.6+w.kneel*.1+w.fold*.04;this.torso.rotation.z=sg*.07;this.headP.rotation.x=bow*.8+w.fold*.2-w.sing*.12;this.headP.rotation.z=sg*.1;
+    this.torso.rotation.x=bow*.6+w.kneel*.1+w.fold*.04+w.pray*.14;this.torso.rotation.z=sg*.07+dz*.12*w.dance;this.headP.rotation.x=bow*.8+w.fold*.2+w.pray*.25-w.sing*.12-w.elev*.15*(this.host?0:1);this.headP.rotation.z=sg*.1;
     this.shadow.material.opacity=1;
   }
 }
 /* seats: every seat has sit (x,z), exit (ex,ez), kneel (kx,kz), stand (sx,sz) points and a facing rot */
 function seatPt(s,m){return m==='kneel'?new THREE.Vector3(s.kx,0,s.kz):m==='stand'?new THREE.Vector3(s.sx,0,s.sz):m==='exit'?new THREE.Vector3(s.ex,0,s.ez):new THREE.Vector3(s.x,0,s.z)}
+
+/* ---------- pew navigation helper (rows of benches split by a centre aisle) ----------
+   rows: bench z list (people sit at z, face -z), bx:[inner,outer] |x| range of benches, cross:[frontZ,backZ] walkways,
+   bounds:{x,z0,z1}, block(x,z): extra obstacles → true if blocked */
+function pewNav({rows,bx,cross,bounds,block=()=>false}){
+  const lanes=rows.map(z=>z-.5),z0=Math.min(...rows)-.65,z1=Math.max(...rows)+.7;
+  const inBand=(x,z)=>Math.abs(x)>bx[0]+.05&&Math.abs(x)<bx[1]-.05&&z>z0&&z<z1;
+  const nearLane=z=>lanes.reduce((a,b)=>Math.abs(b-z)<Math.abs(a-z)?b:a);
+  const blockedAt=(x,z)=>(inBand(x,z)&&Math.abs(nearLane(z)-z)>.22)||block(x,z);
+  const segBlocked=(a,b)=>{for(let i=1;i<24;i++){const t=i/24;if(blockedAt(lerp(a.x,b.x,t),lerp(a.z,b.z,t)))return true}return false};
+  function plan(from,to){const pts=[];let p={x:from.x,z:from.z};const push=q=>{pts.push(q);p=q};
+    if(inBand(p.x,p.z))push({x:0,z:p.z});
+    const tail=[];if(inBand(to.x,to.z))tail.push({x:0,z:to.z});tail.push(to);const first=tail[0];
+    if(segBlocked(p,first)){const cz=(p.z+first.z)/2<(z0+z1)/2?cross[0]:cross[1];if(Math.abs(p.z-cz)>.01)push({x:p.x,z:cz});if(segBlocked(p,{x:first.x,z:cz}))push({x:0,z:cz});push({x:first.x,z:cz})}
+    tail.forEach(push);return pts}
+  function walkable(x,z){if(Math.abs(x)>bounds.x||z<bounds.z0||z>bounds.z1)return false;
+    if(Math.abs(x)>bx[0]-.05&&Math.abs(x)<bx[1]+.05&&z>z0-.1&&z<z1)for(const r of rows)if(Math.abs(z-r)<.34)return false;return !block(x,z)}
+  function clampFloor(x,z){x=clamp(x,-bounds.x,bounds.x);z=clamp(z,bounds.z0,bounds.z1);if(inBand(x,z))z=nearLane(z);return {x,z}}
+  return {plan,walkable,clampFloor,inBand,lanes}}
 
 /* ---------- keyboard walking ---------- */
 const keys=new Set();
@@ -200,9 +222,10 @@ function aiTick(a,dt){const ai=a.ai;ai.leaveAt-=dt;
 let myLook=store.get('look',{skin:0,hair:'short',hairC:0,veil:0,stole:0});
 function makeMe(){me=new Avatar({name:myName,isMe:true,look:myLook});me.pos.set(P.start.x,0,P.start.z);me.rotY=me.tRotY=P.start.rot??Math.PI;$('#meName').textContent=myName;
   if(P.startWalk)me.goTo([P.startWalk])}
-function moveMeTo(p,cb){setPray(false);me.standUp();me.goTo(P.plan(me.pos,p),cb)}
+function moveMeTo(p,cb){setPray(false);me.elev=false;me.dance=false;me.standUp();me.goTo(P.plan(me.pos,p),cb)}
 function prayUI(on){const b=$('#aPray');if(!b)return;b.classList.toggle('on',on);$('#aPrayL').textContent=P.text.pray[on?1:0]}
-function setPray(on){if(!me)return;if(on){if(me.path.length){me.path=[];me.onArrive=null}
+function setPray(on){if(!me)return;if(P.kneels===false){if(on&&me.path.length){me.path=[];me.onArrive=null}me.pray=on;prayUI(on);return}
+  if(on){if(me.path.length){me.path=[];me.onArrive=null}
   me.mode='kneel';if(me.seat)me.slide=seatPt(me.seat,'kneel')}
   else if(me.mode==='kneel'){if(me.seat){me.mode='sit';me.slide=seatPt(me.seat,'sit')}else me.mode='stand'}
   prayUI(on)}
@@ -235,10 +258,10 @@ const Snd={ctx:null,master:null,muted:true,verb:null,amb:null,chantOn:false,
     const mix=c.createGain();mix.gain.value=1;[[700,6,1],[1220,7,.5],[2600,9,.18]].forEach(([fr,q,a])=>{const bp=c.createBiquadFilter();bp.type='bandpass';bp.frequency.value=fr;bp.Q.value=q;const ga=c.createGain();ga.gain.value=a*3;mix.connect(bp);bp.connect(ga);ga.connect(g)});g.connect(o);
     const lfo=c.createOscillator(),lg=c.createGain();lfo.frequency.value=5.2;lg.gain.value=f*.006;lfo.connect(lg);
     [0,-7,6].forEach(dt=>{const os=c.createOscillator();os.type='sawtooth';os.frequency.value=f;os.detune.value=dt;lg.connect(os.frequency);os.connect(mix);os.start(t);os.stop(t+dur+.15)});lfo.start(t);lfo.stop(t+dur+.15)},
-  startChant(){this.init();if(!this.ctx)return;if(this.muted)this.setMuted(false);this.chantOn=true;const c=this.ctx,o=this.out();o.gain.value=.8;this.chantOut=o;
+  startChant(){this.init();if(!this.ctx)return;if(this.muted)this.setMuted(false);this.chantOn=true;if(P.music){P.music.start(room);return}const c=this.ctx,o=this.out();o.gain.value=.8;this.chantOut=o;
     const drone=[38,45,50].map((m,i)=>{const os=c.createOscillator(),g=c.createGain();os.type='sine';os.frequency.value=440*Math.pow(2,(m-69)/12);g.gain.value=0;g.gain.setTargetAtTime([.05,.035,.025][i],c.currentTime,1.2);os.connect(g);g.connect(o);os.start();return {os,g}});this.drone=drone;
     const beat=.68;let i=0,t=c.currentTime+.6;const sched=()=>{if(!this.chantOn)return;while(t<c.currentTime+2.5){const [m,b]=this.MEL[i%this.MEL.length];if(m){this.voice(m,t,b*beat*.96,o);this.voice(m-12,t,b*beat*.96,o,.06)}t+=b*beat;i++}this.chantTimer=setTimeout(sched,400)};sched()},
-  stopChant(){this.chantOn=false;clearTimeout(this.chantTimer);if(this.chantOut){const t=this.ctx.currentTime;this.chantOut.gain.setTargetAtTime(0,t,.4);const d=this.drone;setTimeout(()=>d.forEach(x=>x.os.stop()),2500)}}
+  stopChant(){this.chantOn=false;if(P.music){P.music.stop();return}clearTimeout(this.chantTimer);if(this.chantOut){const t=this.ctx.currentTime;this.chantOut.gain.setTargetAtTime(0,t,.4);const d=this.drone;setTimeout(()=>d.forEach(x=>x.os.stop()),2500)}}
 };
 /* ---------- interaction ---------- */
 const cam={yaw:0,pitch:.32,dist:6.2,target:new THREE.Vector3(0,1.3,10)};
@@ -349,6 +372,12 @@ $('#bEnter').onclick=()=>{entered=true;$('#gate').classList.add('hide');$('#hud'
 const clock=new THREE.Clock();let spawnT=rand(10,25),bellCheck=new Date().getHours(),t=0;
 const tmp=new THREE.Vector3();
 function project(v,el,offY=0){tmp.copy(v).project(camera);const vis=tmp.z<1&&tmp.z>-1;el.style.transform=`translate(${(tmp.x*.5+.5)*innerWidth}px,${(-tmp.y*.5+.5)*innerHeight+offY}px) translate(-50%,-100%)`;return vis}
+/* speech bubbles over avatars */
+const bubbles=[];
+function say(av,text,dur=2.4,big=false){if(!av||!av.root.parent)return;const el=document.createElement('div');el.className='say'+(big?' big':'');el.textContent=text;$('#hud').appendChild(el);
+  const old=bubbles.find(b=>b.av===av);if(old){old.el.remove();bubbles.splice(bubbles.indexOf(old),1)}bubbles.push({av,el,t:dur})}
+function updateBubbles(dt){for(let i=bubbles.length-1;i>=0;i--){const b=bubbles[i];b.t-=dt;const p=b.av.pos.clone();p.y=(2.05+b.av.bp.position.y)*b.av.scale+b.av.pos.y;
+  const v=project(p,b.el,-6);const m=/translate\(([-\d.e]+)px,\s*([-\d.e]+)px\)/.exec(b.el.style.transform);if(m){const w=b.el.offsetWidth,x=clamp(+m[1],w/2+8,innerWidth-w/2-8);b.el.style.transform=`translate(${x}px,${m[2]}px) translate(-50%,-100%)`}b.el.style.opacity=b.t<.4?Math.max(0,b.t/.4):1;if(!v)b.el.style.opacity=0;if(b.t<0||!b.av.root.parent){b.el.remove();bubbles.splice(i,1)}}}
 let spotAct=null;$('#spotChip').onclick=()=>{spotAct&&spotAct()};
 function loop(){const dt=Math.min(clock.getDelta(),.05);t+=dt;
   if(me){me.manual=entered&&!cam.focus?keyDir():null;me.update(dt)}others.forEach(o=>{aiTick(o,dt);o.update(dt)});
@@ -363,6 +392,7 @@ function loop(){const dt=Math.min(clock.getDelta(),.05);t+=dt;
   renderer.render(scene,camera);
   if(me&&entered){const hp=me.pos.clone();hp.y=(1.92+me.bp.position.y)*me.scale;$('#meChip').classList.toggle('hide',!project(hp,$('#meChip'),-4));
     if(otherShown){otherTimer-=dt;const op=otherShown.pos.clone();op.y=(1.92+otherShown.bp.position.y)*otherShown.scale;const v=project(op,$('#otherChip'),-4);if(otherTimer<0||!otherShown.root.parent||!v){$('#otherChip').classList.add('hide');otherShown=null}}
+    updateBubbles(dt);
     const vc=$('#spotChip');const sp=(!me.path.length&&me.mode==='stand'&&me.reachT<0&&P.spot)?P.spot():null;
     if(sp){vc.classList.remove('hide');$('#spotLbl').textContent=sp.label;spotAct=sp.go;project(sp.pos,vc)}else{vc.classList.add('hide');spotAct=null}}
   requestAnimationFrame(loop)}
