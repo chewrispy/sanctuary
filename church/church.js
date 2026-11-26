@@ -76,7 +76,7 @@ oboxG.traverse(o=>o.userData.kind='obox');
 function signTex(text,sub,bg='#1d2540'){return tex(256,96,(g,w,h)=>{g.fillStyle=bg;g.fillRect(0,0,w,h);g.fillStyle='#fff';g.textAlign='center';g.font='700 34px "Noto Sans KR",sans-serif';g.fillText(text,w/2,sub?46:60);if(sub){g.font='500 18px "Noto Sans KR",sans-serif';g.fillStyle='rgba(255,255,255,.75)';g.fillText(sub,w/2,78)}})}
 const atmG=new THREE.Group();atmG.position.set(-8.6,0,11.2);atmG.rotation.y=Math.PI/2;world.add(atmG);
 box(.85,1.75,.6,M.white,0,.875,0,atmG);box(.75,.5,.04,new THREE.MeshBasicMaterial({color:0x4d8ff0}),0,1.3,.31,atmG);box(.3,.04,.04,M.dark,0,1.0,.31,atmG);
-const atmSign=new THREE.Mesh(new THREE.PlaneGeometry(.9,.34),new THREE.MeshBasicMaterial({map:signTex('헌금 ATM','카드 · 계좌이체')}));atmSign.position.set(0,1.95,.31);atmG.add(atmSign);
+const atmSign=new THREE.Mesh(new THREE.PlaneGeometry(.9,.34),new THREE.MeshBasicMaterial({map:signTex('헌금 ATM','인출 · 헌금 · 자동이체')}));atmSign.position.set(0,1.95,.31);atmG.add(atmSign);
 atmG.traverse(o=>o.userData.kind='atm');
 const deskG=new THREE.Group();deskG.position.set(6.6,0,11.2);world.add(deskG);box(2,.8,.7,M.wood,0,.4,0,deskG);
 const deskSign=new THREE.Mesh(new THREE.PlaneGeometry(1.4,.5),new THREE.MeshBasicMaterial({map:signTex('새가족 환영','처음 오셨나요?','#3d6b4f')}));deskSign.position.set(0,1.05,.36);deskG.add(deskSign);
@@ -250,13 +250,24 @@ function offeringSheet(){$('#offerBody').innerHTML=`<h3>헌금하기</h3><div cl
   $('#offerBody').querySelectorAll('[data-env]').forEach(b=>b.onclick=()=>{envSel=ENV[+b.dataset.env][0];
     $('#offerBody').innerHTML=`<h3>${envSel}</h3><div class="desc">어떻게 드릴까요?</div><div class="offer"><button class="opt" id="byBox"><span><b>봉투에 넣어 헌금함에</b><small>입구 왼쪽 나무 헌금함</small></span><span class="n">✉</span></button><button class="opt" id="byAtm"><span><b>헌금 ATM으로</b><small>카드도, 계좌이체도 돼요</small></span><span class="n">💳</span></button></div>`;
     $('#byBox').onclick=()=>{closeSheets();goSpot('obox',()=>{me.reachT=0;setTimeout(()=>{Snd.coin(false);toast(`${envSel} 봉투를 헌금함에 넣었어요`)},800)})};
-    $('#byAtm').onclick=()=>{closeSheets();goSpot('atm',()=>Atm.start())}});openSheet('#offerSheet')}
+    $('#byAtm').onclick=()=>{closeSheets();goSpot('atm',()=>Atm.start('offer'))}});openSheet('#offerSheet')}
 function goSpot(k,cb){const s=SPOTS[k];const done=()=>{me.tRotY=s.rot;cb&&setTimeout(cb,350)};if(Math.hypot(me.pos.x-s.x,me.pos.z-s.z)<.4&&me.mode==='stand')done();else moveMeTo({x:s.x,z:s.z},done)}
 const Atm={on:false,beep(){if(!Snd.ctx||Snd.muted)return;const c=Snd.ctx,o=c.createOscillator(),g=c.createGain();o.frequency.value=1250;g.gain.setValueAtTime(.06,c.currentTime);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+.12);o.connect(g);g.connect(Snd.out());o.start();o.stop(c.currentTime+.15)},
-  start(){this.on=true;cam.focus={pos:new THREE.Vector3(-8.3,1.25,11.2),dist:2.5,yaw:Math.PI/2-.6,pitch:.12};const env=envSel||'주정헌금';
-    panel({k:'헌금 ATM',line:'카드를 넣어 주세요.',note:`${env} · 결제는 실제로 되지 않아요`,btns:[{t:'카드 넣기',p:1,f:()=>{this.beep();me.reachT=0;
-      panel({k:'헌금 ATM',line:'금액을 선택하세요.',note:env,btns:['1만 원','3만 원','5만 원','10만 원'].map(a=>({t:a,f:()=>{this.beep();
-        panel({k:'헌금 ATM',line:'헌금이 완료되었습니다. 감사합니다.',note:'기부금 영수증은 연말에 교회 사무실에서 받으실 수 있어요. 카드를 잊지 마세요!',btns:[{t:'카드 빼기',p:1,f:()=>{this.beep();toast(`${env} ${a}, ATM으로 드렸어요 (가상)`);stopModes()}}]})}}))})}},{t:'취소',f:()=>stopModes()}]})},
+  view(){cam.focus={pos:new THREE.Vector3(-8.3,1.25,11.2),dist:2.5,yaw:Math.PI/2-.6,pitch:.12}},
+  start(mode){this.on=true;this.view();if(mode==='offer')return this.offer();
+    panel({k:'헌금 ATM',line:'원하시는 업무를 선택하세요.',note:'현금 인출도, 헌금도, 자동이체도 한 곳에서 · 실제로 처리되지 않아요',btns:[
+      {t:'현금 인출',f:()=>{this.beep();this.cash()}},{t:'헌금하기',p:1,f:()=>{this.beep();this.offer()}},{t:'자동이체 신청',f:()=>{this.beep();this.auto()}},{t:'취소',f:()=>stopModes()}]})},
+  cash(){panel({k:'헌금 ATM · 현금 인출',line:'인출할 금액을 선택하세요.',btns:['1만 원','5만 원','10만 원'].map(a=>({t:a,f:()=>{this.beep();me.reachT=0;
+    panel({k:'헌금 ATM · 현금 인출',line:'현금을 받아 가세요.',note:'인출하신 현금은 바로 옆 헌금함에 넣으셔도 돼요 :)',btns:[{t:'현금 받기',p:1,f:()=>{this.beep();toast(`${a}을 인출했어요 (가상) 💵`);this.done()}}]})}})).concat([{t:'처음으로',f:()=>this.start()}])})},
+  offer(){const env=envSel||'주정헌금';
+    panel({k:'헌금 ATM · 헌금',line:'카드를 넣어 주세요.',note:`${env} · 결제는 실제로 되지 않아요`,btns:[{t:'카드 넣기',p:1,f:()=>{this.beep();me.reachT=0;
+      panel({k:'헌금 ATM · 헌금',line:'금액을 선택하세요.',note:env,btns:['1만 원','3만 원','5만 원','10만 원'].map(a=>({t:a,f:()=>{this.beep();
+        panel({k:'헌금 ATM · 헌금',line:'헌금이 완료되었습니다. 감사합니다.',note:'기부금 영수증은 연말에 교회 사무실에서 받으실 수 있어요. 카드를 잊지 마세요!',btns:[{t:'카드 빼기',p:1,f:()=>{this.beep();toast(`${env} ${a}, ATM으로 드렸어요 (가상)`);this.done()}}]})}}))})}},{t:'처음으로',f:()=>this.start()}]})},
+  auto(){panel({k:'헌금 ATM · 자동이체 신청',line:'자동이체할 헌금을 선택하세요.',note:'매달 잊지 않도록, 은행 앱처럼 자동으로…',btns:[['십일조'],['건축헌금'],['선교헌금']].map(([e])=>({t:e,p:e==='십일조',f:()=>{this.beep();
+    panel({k:`자동이체 · ${e}`,line:'매월 이체일을 선택하세요.',btns:['5일','10일','25일'].map(d=>({t:`매월 ${d}`,f:()=>{this.beep();
+      panel({k:`자동이체 · ${e}`,line:'금액을 선택하세요.',note:e==='십일조'?'수입의 십분의 일… 계산기는 직접 두드려 보세요':'',btns:['3만 원','10만 원','30만 원'].map(a=>({t:a,f:()=>{this.beep();
+        panel({k:`자동이체 · ${e}`,line:`매월 ${d} ${e} ${a} 자동이체가 등록되었습니다.`,note:'해지는 교회 사무실 또는 이 ATM에서 할 수 있어요. 물론 실제로 등록되지는 않았어요 😅',btns:[{t:'확인',p:1,f:()=>{this.beep();toast(`매월 ${d} ${e} 자동이체 등록 완료 (가상)`);this.done()}}]})}}))})}}))})}})).concat([{t:'처음으로',f:()=>this.start()}])})},
+  done(){stopModes()},
   stop(){this.on=false}};
 
 /* ---------- bulletin & newcomer ---------- */
@@ -305,10 +316,10 @@ Object.assign(P,{
     if(Music.on&&room.id!=='choir'){a.elev=r<.55;a.dance=room.id==='revival'&&a.mode==='stand'&&r<.3}
     else{a.pray=r<.18;a.elev=false;a.dance=false}},
   tapHit(h){const o=h.object,k=o.userData.kind;if(o.userData.avatar===greeter){bulletin();return true}if(o.userData.avatar===staff){newcomer();return true}
-    if(k==='obox'||k==='atm'){stopModes();offeringSheet();return true}if(k==='desk'){newcomer();return true}return false},
+    if(k==='obox'){stopModes();offeringSheet();return true}if(k==='atm'){stopModes();goSpot('atm',()=>Atm.start());return true}if(k==='desk'){newcomer();return true}return false},
   stopModes(except){if(Service.on&&except!=='service')Service.end(true);if(Comm.on)Comm.end(true);if(Tong.on)Tong.stop();if(Atm.on)Atm.stop()},
   spot(){if(Service.on||Comm.on||Atm.on||Tong.on)return null;const d=k=>Math.hypot(me.pos.x-SPOTS[k].x,me.pos.z-SPOTS[k].z);
-    if(d('atm')<1.8)return {label:'헌금 ATM 이용하기',pos:new THREE.Vector3(-8.3,2.4,11.2),go:offeringSheet};
+    if(d('atm')<1.8)return {label:'헌금 ATM 이용하기',pos:new THREE.Vector3(-8.3,2.4,11.2),go:()=>goSpot('atm',()=>Atm.start())};
     if(d('obox')<1.6)return {label:'헌금하기',pos:new THREE.Vector3(-4.2,1.6,11.8),go:offeringSheet};
     if(d('desk')<1.8)return {label:'새가족 등록',pos:new THREE.Vector3(6.6,1.7,11.2),go:newcomer};
     if(d('greet')<1.8)return {label:'주보 받기',pos:new THREE.Vector3(1.6,2.5,11.6),go:bulletin};return null},
